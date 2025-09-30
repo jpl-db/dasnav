@@ -18,7 +18,7 @@ app = Flask(__name__)
 # In production, Databricks handles routing between frontend and backend
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["http://localhost:3000", "http://localhost:8000", "*"],
+        "origins": ["http://localhost:3000", "http://localhost:8000", "http://localhost:8080", "*"],
         "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type"]
     }
