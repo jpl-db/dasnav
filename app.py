@@ -9,12 +9,12 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import os
-from dotenv import load_dotenv
 from databricks import sql
 from databricks.sdk import WorkspaceClient
 
-# Load environment variables from .env file for local development
-load_dotenv()
+# Configuration
+DATABRICKS_PROFILE = os.getenv("DATABRICKS_PROFILE", "pm-bootcamp")
+SQL_WAREHOUSE_ID = os.getenv("DATABRICKS_SQL_WAREHOUSE_ID", "")
 
 # Configure the Streamlit page
 st.set_page_config(
@@ -83,39 +83,26 @@ def generate_sample_data():
 
 @st.cache_resource
 def get_databricks_connection():
-    """Get Databricks SQL connection using workspace authentication"""
+    """Get Databricks SQL connection using CLI profile credentials"""
     try:
-        # Get configuration from environment or Databricks Apps context
-        host = os.getenv("DATABRICKS_HOST")
-        warehouse_id = os.getenv("DATABRICKS_SQL_WAREHOUSE_ID")
-        token = os.getenv("DATABRICKS_TOKEN")
+        # Initialize WorkspaceClient with profile (uses ~/.databrickscfg)
+        w = WorkspaceClient(profile=DATABRICKS_PROFILE)
         
-        if not host or not warehouse_id:
-            return None, "Please set DATABRICKS_HOST and DATABRICKS_SQL_WAREHOUSE_ID in your .env file"
+        # Get warehouse ID from environment or show error
+        warehouse_id = SQL_WAREHOUSE_ID
+        if not warehouse_id:
+            return None, "Please set DATABRICKS_SQL_WAREHOUSE_ID environment variable"
         
-        # Use OAuth or PAT depending on what's available
-        if token:
-            # Use Personal Access Token
-            connection = sql.connect(
-                server_hostname=host.replace("https://", ""),
-                http_path=f"/sql/1.0/warehouses/{warehouse_id}",
-                access_token=token
-            )
-        else:
-            # Try to use OAuth from Databricks CLI authentication
-            try:
-                w = WorkspaceClient()
-                connection = sql.connect(
-                    server_hostname=host.replace("https://", ""),
-                    http_path=f"/sql/1.0/warehouses/{warehouse_id}",
-                    credentials_provider=lambda: w.config.authenticate
-                )
-            except Exception as e:
-                return None, f"OAuth authentication failed. Run: databricks auth login --host {host}"
+        # Create SQL connection using profile credentials
+        connection = sql.connect(
+            server_hostname=w.config.host.replace("https://", ""),
+            http_path=f"/sql/1.0/warehouses/{warehouse_id}",
+            credentials_provider=w.config.authenticate
+        )
         
         return connection, None
     except Exception as e:
-        return None, str(e)
+        return None, f"Connection failed: {str(e)}. Ensure 'databricks auth login' is configured for profile '{DATABRICKS_PROFILE}'"
 
 
 def query_databricks_table(table_name):

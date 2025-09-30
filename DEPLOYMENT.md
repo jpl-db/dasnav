@@ -1,6 +1,10 @@
-# Deployment Guide for logfood-central
+# Deployment Guide for pm-bootcamp
 
-This guide covers deploying the Timeseries Explorer app to the `logfood-central` Databricks environment.
+This guide covers deploying the Timeseries Explorer app to the `pm-bootcamp` Databricks environment.
+
+**GitHub Repository**: https://github.com/jpl-db/dasnav  
+**App Name**: `dasnav`  
+**App URL**: https://dasnav-3755057911985085.staging.aws.databricksapps.com
 
 ## Prerequisites
 
@@ -13,39 +17,37 @@ Before deploying, ensure you have:
 
 ## Deployment Steps
 
-### Step 1: Authenticate with logfood-central
+### Step 1: Link GitHub Repository to Databricks App
 
-```bash
-databricks auth login --host https://your-logfood-workspace.cloud.databricks.com
-```
+The app `dasnav` has already been created. Now link it to the GitHub repo:
 
-### Step 2: Create the App in Databricks
+1. Navigate to your pm-bootcamp Databricks workspace
+2. Go to **Apps** in the sidebar
+3. Find the **dasnav** app in the list
+4. Click on the app to open it
+5. Click **Git Folder** or **Source Code**
+6. Click **Link Git Repository**
+7. Enter the repository URL:
+   ```
+   https://github.com/jpl-db/dasnav
+   ```
+8. Select the **main** branch
+9. Click **Link**
 
-You have two options:
+### Step 2: Configure SQL Warehouse (if needed)
 
-#### Option A: Using Databricks UI
+If the app needs to query Databricks tables:
 
-1. Navigate to your Databricks workspace
-2. Click **New** → **App**
-3. Choose **Custom app**
-4. Enter app details:
-   - **Name**: `timeseries-explorer` (lowercase, hyphens only)
-   - **Source**: Git repository or upload files
-5. Configure resources:
-   - Select your SQL Warehouse ID
-6. Click **Create**
+1. In the app settings, find **Resources**
+2. Add a SQL Warehouse:
+   - Click **Add Resource**
+   - Select **SQL Warehouse**
+   - Choose your warehouse from the dropdown
+3. Save the configuration
 
-#### Option B: Using Databricks CLI (Coming Soon)
+Alternatively, you can set the SQL Warehouse ID in `app.yaml` before deploying.
 
-```bash
-# Upload app files to workspace
-databricks workspace import-dir . /Workspace/Users/your-email/timeseries-explorer
-
-# Deploy app (requires Apps API)
-databricks apps deploy timeseries-explorer
-```
-
-### Step 3: Configure App Resources
+### Step 3: Deploy the App
 
 The app requires access to:
 
@@ -58,6 +60,11 @@ The app requires access to:
 2. **Environment Variables** (if needed):
    - Set in Databricks App configuration UI
    - Or in `app.yaml` under `env:` section
+
+1. In the app view, click **Deploy**
+2. Select the **main** branch (or any specific commit)
+3. Wait for deployment to complete
+4. The app will start automatically on port 8000
 
 ### Step 4: Set Up App Permissions
 

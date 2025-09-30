@@ -4,24 +4,35 @@ Get up and running with the Timeseries Explorer app in 5 minutes.
 
 ## For Local Development
 
-### Step 1: Set Up Authentication
+### Step 1: Verify Databricks CLI Authentication
 
-Run the automated setup script:
+Since you already have the Databricks CLI configured:
 
 ```bash
-./setup_auth.sh
+databricks auth profiles
 ```
 
-When prompted, enter:
-1. **Workspace URL** for logfood-central (e.g., `https://your-workspace.cloud.databricks.com`)
-2. **SQL Warehouse ID** (find in Databricks UI under SQL > Warehouses)
+You should see `pm-bootcamp` in the list. If not, run:
 
-This will:
-- Configure OAuth authentication
-- Create a `.env` file with your settings
-- Set up credentials for querying Databricks tables
+```bash
+databricks auth login --host https://your-workspace.cloud.databricks.com --profile pm-bootcamp
+```
 
-### Step 2: Install Dependencies
+### Step 2: Set SQL Warehouse ID
+
+Create a `.env` file:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set your SQL Warehouse ID:
+
+```
+DATABRICKS_SQL_WAREHOUSE_ID=your-warehouse-id-here
+```
+
+### Step 3: Install Dependencies
 
 ```bash
 # Create virtual environment
@@ -32,7 +43,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Step 3: Run the App
+### Step 4: Run the App
 
 ```bash
 streamlit run app.py --server.port 8000

@@ -2,6 +2,9 @@
 
 A Databricks App for exploring and visualizing timeseries data interactively.
 
+**GitHub Repository**: https://github.com/jpl-db/dasnav  
+**Databricks App URL**: https://dasnav-3755057911985085.staging.aws.databricksapps.com
+
 ## Overview
 
 This app provides an interactive interface for:
@@ -23,53 +26,35 @@ This app provides an interactive interface for:
 
 ## Installation
 
-### Quick Setup (Recommended)
+### Prerequisites
 
-Run the automated setup script to configure authentication:
+You should already have:
+- ✅ Databricks CLI installed and configured
+- ✅ A profile for pm-bootcamp (verify with `databricks auth profiles`)
 
+If not, run:
 ```bash
-./setup_auth.sh
+databricks auth login --host https://your-workspace.cloud.databricks.com --profile pm-bootcamp
 ```
 
-This will:
-1. Check/install Databricks CLI
-2. Set up OAuth authentication for logfood-central
-3. Create a `.env` file with your credentials
-4. Configure SQL Warehouse access
+### Setup Steps
 
-### Manual Setup
+#### 1. Configure SQL Warehouse
 
-If you prefer to set up manually:
-
-#### 1. Install Databricks CLI
+Create a `.env` file from the example:
 
 ```bash
-# Install or update Databricks CLI
-curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+cp .env.example .env
 ```
 
-#### 2. Configure Authentication for logfood-central
-
-```bash
-# Set up OAuth authentication (recommended)
-databricks auth login --host https://your-logfood-workspace.cloud.databricks.com
+Edit `.env` and add your SQL Warehouse ID:
+```
+DATABRICKS_SQL_WAREHOUSE_ID=your-warehouse-id-here
 ```
 
-This creates authentication credentials in `~/.databrickscfg` that the app will use.
+Find your SQL Warehouse ID in Databricks: **SQL** > **Warehouses** > Your Warehouse > Copy ID from URL
 
-#### 3. Create .env File
-
-Copy the template and fill in your values:
-
-```bash
-cp env.template .env
-```
-
-Edit `.env` and set:
-- `DATABRICKS_HOST`: Your logfood-central workspace URL
-- `DATABRICKS_SQL_WAREHOUSE_ID`: Your SQL Warehouse ID (find in Databricks UI under SQL > Warehouses)
-
-#### 4. Install Python Dependencies
+#### 2. Install Python Dependencies
 
 ```bash
 # Create virtual environment
@@ -203,9 +188,9 @@ The app uses the following environment variables (configured in `databricks.yml`
 
 ## Databricks Environment
 
-**Target Environment**: `logfood-central`
+**Target Environment**: `pm-bootcamp`
 
-Make sure to deploy this app to the correct Databricks workspace environment.
+App URL: https://dasnav-3755057911985085.staging.aws.databricksapps.com
 
 ## Troubleshooting
 
