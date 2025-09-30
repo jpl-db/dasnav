@@ -9,6 +9,7 @@ import {
   ConnectionTestResult,
 } from '@/lib/databricksApi';
 import { generateDefaultTaxiDataset, TAXI_SCHEMA } from '@/lib/mockNycTaxiData';
+import { processPeriodOverPeriod } from '@/lib/periodOverPeriod';
 
 // Check if we're in mock mode (backend not available)
 // Set to false to use the real Databricks backend
@@ -21,142 +22,76 @@ const processMockDataForQuery = (rawData: any[], query: string): any[] => {
   // Check if this is a period over period query
   const isPoP = query.includes('current_period') && query.includes('previous_period');
   
-  console.log('[Mock Data Processing] Is PoP:', isPoP);
-  
   if (isPoP) {
-    // Extract metric info from query
-    const currentMatch = query.match(/current_(\w+)_(\w+)/);
-    const previousMatch = query.match(/previous_(\w+)_(\w+)/);
+    // Extract parameters from query
+    const aggMatch = query.match(/\s+(\w+)\(/i);
+    const metricMatch = query.match(/\((\w+)\)\s+AS\s+current_/);
     const grainMatch = query.match(/DATE_TRUNC\('(\w+)',/);
-    const intervalMatch = query.match(/INTERVAL '(\d+)' (\w+)/);
+    const timeColMatch = query.match(/DATE_TRUNC\([^,]+,\s*(\w+)\)/);
+    const intervalMatch = query.match(/INTERVAL\s+'(\d+)'\s+(\w+)/);
     
-    console.log('[Mock Data Processing] Matches:', { currentMatch, previousMatch, grainMatch, intervalMatch });
-    
-    if (!currentMatch || !previousMatch || !grainMatch || !intervalMatch) {
-      console.log('[Mock Data Processing] Missing matches, returning empty');
+    if (!aggMatch || !metricMatch || !grainMatch || !timeColMatch || !intervalMatch) {
+      console.error('[Mock PoP] Failed to parse query parameters');
       return [];
     }
     
-    const agg = currentMatch[1];
-    const metric = currentMatch[2];
+    const aggregation = aggMatch[1].toLowerCase();
+    const metric = metricMatch[1];
     const grain = grainMatch[1];
+    const timeColumn = timeColMatch[1];
     const compareCount = parseInt(intervalMatch[1]);
     const compareUnit = intervalMatch[2].toLowerCase();
     
-    console.log('[Mock Data Processing] Params:', { agg, metric, grain, compareCount, compareUnit });
-    
-    // Group data by time grain
-    const grouped = new Map<string, { current: number[]; previous: number[] }>();
-    
-    rawData.forEach(row => {
-      const timestamp = new Date(row.tpep_pickup_datetime || row.tpep_dropoff_datetime);
-      const value = Number(row[metric]) || 0;
-      
-      // Truncate timestamp based on grain
-      switch (grain) {
-        case 'day':
-          timestamp.setHours(0, 0, 0, 0);
-          break;
-        case 'week':
-          const day = timestamp.getDay();
-          timestamp.setDate(timestamp.getDate() - day);
-          timestamp.setHours(0, 0, 0, 0);
-          break;
-        case 'month':
-          timestamp.setDate(1);
-          timestamp.setHours(0, 0, 0, 0);
-          break;
-      }
-      
-      const timeKey = timestamp.toISOString();
-      
-      if (!grouped.has(timeKey)) {
-        grouped.set(timeKey, { current: [], previous: [] });
-      }
-      
-      grouped.get(timeKey)!.current.push(value);
+    console.log('[Mock PoP] Extracted params:', {
+      aggregation,
+      metric,
+      grain,
+      timeColumn,
+      compareCount,
+      compareUnit
     });
     
-    console.log('[Mock Data Processing] Grouped keys count:', grouped.size);
-    
-    // Calculate aggregations and shift data for previous period
-    const result: any[] = [];
-    const sortedKeys = Array.from(grouped.keys()).sort();
-    
-    sortedKeys.forEach((timeKey, index) => {
-      const timestamp = new Date(timeKey);
-      const entry = grouped.get(timeKey)!;
-      
-      // Calculate current value
-      let currentValue = 0;
-      if (agg === 'sum') {
-        currentValue = entry.current.reduce((a, b) => a + b, 0);
-      } else if (agg === 'avg') {
-        currentValue = entry.current.reduce((a, b) => a + b, 0) / entry.current.length;
-      } else if (agg === 'count') {
-        currentValue = entry.current.length;
-      }
-      
-      // Find previous period data
-      let previousValue = null;
-      const previousDate = new Date(timestamp);
-      
-      if (compareUnit === 'month') {
-        previousDate.setMonth(previousDate.getMonth() - compareCount);
-      } else if (compareUnit === 'week') {
-        previousDate.setDate(previousDate.getDate() - (compareCount * 7));
-      } else if (compareUnit === 'day') {
-        previousDate.setDate(previousDate.getDate() - compareCount);
-      }
-      
-      const previousKey = previousDate.toISOString();
-      if (grouped.has(previousKey)) {
-        const prevEntry = grouped.get(previousKey)!;
-        if (agg === 'sum') {
-          previousValue = prevEntry.current.reduce((a, b) => a + b, 0);
-        } else if (agg === 'avg') {
-          previousValue = prevEntry.current.reduce((a, b) => a + b, 0) / prevEntry.current.length;
-        } else if (agg === 'count') {
-          previousValue = prevEntry.current.length;
-        }
-      }
-      
-      result.push({
-        time: timestamp.toISOString(),
-        index: index,  // Add index for PoP X-axis
-        [`current_${agg}_${metric}`]: currentValue,
-        [`previous_${agg}_${metric}`]: previousValue,
-      });
+    // Process using the dedicated PoP function
+    const processed = processPeriodOverPeriod(rawData, timeColumn, metric, {
+      metric,
+      aggregation: aggregation as any,
+      compareUnit: compareUnit as any,
+      compareCount,
+      grain: grain as any
     });
     
-    console.log('[Mock Data Processing] PoP Result count:', result.length);
-    console.log('[Mock Data Processing] First result:', result[0]);
-    
-    return result;
+    // Convert to expected format with proper column names
+    return processed.map(row => ({
+      time: row.time,
+      [`current_${aggregation}_${metric}`]: row.current_value,
+      [`previous_${aggregation}_${metric}`]: row.previous_value
+    }));
   }
   
   // For non-PoP queries, return raw data (will be aggregated by ChartVisualization)
-  console.log('[Mock Data Processing] Returning raw data, count:', rawData.length);
   return rawData;
 };
 
 /**
  * Execute a Databricks SQL query with React Query
+ * Returns both raw data and processed data for chart visualization
  */
 export const useDatabricksQuery = (
   query: string,
   enabled: boolean = true
-): UseQueryResult<any[], Error> => {
+): UseQueryResult<{ data: any[], rawData: any[] }, Error> => {
   return useQuery({
     queryKey: ['databricks-query', query],
     queryFn: async () => {
       if (MOCK_MODE) {
         console.log('[Mock Mode] Simulating query execution:', query);
         await new Promise(resolve => setTimeout(resolve, 500));
-        const rawData = generateDefaultTaxiDataset();
-        return processMockDataForQuery(rawData, query);
+        const rawTaxiData = generateDefaultTaxiDataset();
+        const processedData = processMockDataForQuery(rawTaxiData, query);
+        return { data: processedData, rawData: rawTaxiData };
       }
-      return runQuery(query);
+      const data = await runQuery(query);
+      return { data, rawData: data };
     },
     enabled: enabled && query.trim().length > 0,
     retry: 1,

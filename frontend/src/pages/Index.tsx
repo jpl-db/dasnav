@@ -8,6 +8,7 @@ import DataConfig from "@/components/explorer/DataConfig";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDatabricksSchema } from "@/hooks/useDatabricks";
 import { useToast } from "@/hooks/use-toast";
+import { useDebounce } from "@/hooks/useDebounce";
 interface SchemaColumn {
   name: string;
   type: string;
@@ -45,13 +46,17 @@ const Index = () => {
   const [tableName, setTableName] = useState<string>("samples.nyctaxi.trips");
   const [schema, setSchema] = useState<SchemaColumn[]>([]);
   
-  // Fetch schema from backend
+  // Debounce table name to avoid fetching on every keystroke
+  // This auto-fetches schema when user stops typing for 800ms
+  const debouncedTableName = useDebounce(tableName, 800);
+  
+  // Fetch schema from backend - automatically refetches when debouncedTableName changes
   const { 
     data: rawSchema, 
     isLoading: schemaLoading, 
     error: schemaError,
     refetch: refetchSchema 
-  } = useDatabricksSchema(tableName, tableName.trim().length > 0);
+  } = useDatabricksSchema(debouncedTableName, debouncedTableName.trim().length > 0);
 
   // Update schema when raw schema changes (use useEffect to avoid infinite re-renders)
   useEffect(() => {

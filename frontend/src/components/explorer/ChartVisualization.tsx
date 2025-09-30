@@ -62,16 +62,28 @@ const ChartVisualization = ({ table, schema, config, onConfigChange }: ChartVisu
 
   // Fetch data from API
   const hasMetrics = config.chartType === 'period-over-period' || config.metrics.length > 0;
-  const { data: rawData, isLoading, error } = useDatabricksQuery(
+  const { data: queryResult, isLoading, error } = useDatabricksQuery(
     sqlQuery,
     hasMetrics && sqlQuery.length > 0
   );
+
+  // Extract processed data and raw taxi data
+  const rawData = queryResult?.data || [];
+  const rawTaxiData = queryResult?.rawData || [];
 
   // Process data for visualization
   const aggregatedData = useMemo(() => {
     if (!rawData || rawData.length === 0) return [];
     
-    // Check if data has 'time' field (from backend) or needs aggregation (raw taxi data)
+    // For period-over-period, data is already in the right format
+    if (config.chartType === 'period-over-period') {
+      return rawData.map(row => ({
+        ...row,
+        time: row.time || format(new Date(), 'MMM d, yyyy')
+      }));
+    }
+    
+    // For default charts, check if data has 'time' field (from backend) or needs aggregation
     const hasTimeField = rawData[0] && 'time' in rawData[0];
     
     if (hasTimeField) {
@@ -82,7 +94,6 @@ const ChartVisualization = ({ table, schema, config, onConfigChange }: ChartVisu
       }));
     } else {
       // Raw taxi data - need to aggregate it
-      // This handles mock data that hasn't been aggregated by SQL
       const timeColumn = schema.find(col => col.role === 'time')?.name || 'tpep_pickup_datetime';
       
       // Group by time grain
@@ -226,6 +237,7 @@ const ChartVisualization = ({ table, schema, config, onConfigChange }: ChartVisu
         <LegendTable
           payload={payload}
           aggregatedData={aggregatedData}
+          rawData={rawTaxiData}
           chartType={config.chartType}
           metrics={config.metrics}
           popConfig={config.popConfig}
@@ -239,6 +251,7 @@ const ChartVisualization = ({ table, schema, config, onConfigChange }: ChartVisu
       <LegendList
         payload={payload}
         aggregatedData={aggregatedData}
+        rawData={rawTaxiData}
         chartType={config.chartType}
         metrics={config.metrics}
         popConfig={config.popConfig}

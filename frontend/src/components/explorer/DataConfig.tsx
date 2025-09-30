@@ -64,12 +64,13 @@ const DataConfig = ({ tableName, onTableNameChange, onRefresh, isLoading }: Data
               onClick={onRefresh}
               disabled={isLoading || !tableName.trim()}
               className="h-9 px-3"
+              title="Manually refresh schema"
             >
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Enter the full path to your Unity Catalog table (e.g., catalog.schema.table)
+            Schema auto-loads from Databricks when you enter a table name
           </p>
         </div>
       </div>
