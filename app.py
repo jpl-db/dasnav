@@ -1,13 +1,10 @@
 """
-Databricks App: Timeseries Data Explorer
-A Streamlit-based application for exploring and visualizing timeseries data
+Databricks App: SQL Query Interface
+A simple SQL query interface for Unity Catalog tables
 """
 
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from datetime import datetime, timedelta
 import os
 from databricks import sql
 from databricks.sdk import WorkspaceClient
@@ -18,67 +15,16 @@ SQL_WAREHOUSE_ID = os.getenv("DATABRICKS_SQL_WAREHOUSE_ID", "")
 
 # Configure the Streamlit page
 st.set_page_config(
-    page_title="Timeseries Explorer",
-    page_icon="📈",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="SQL Query Interface",
+    page_icon="🔍",
+    layout="wide"
 )
 
 # Main title
-st.title("📈 Timeseries Data Explorer")
-st.markdown("Explore and visualize your timeseries data interactively")
-
-# Sidebar configuration
-with st.sidebar:
-    st.header("⚙️ Configuration")
-    
-    # Data source selection
-    data_source = st.selectbox(
-        "Select Data Source",
-        ["Sample Data", "Upload CSV", "Databricks Table"]
-    )
-    
-    st.markdown("---")
-    
-    # Visualization options
-    st.subheader("Visualization Options")
-    chart_type = st.selectbox(
-        "Chart Type",
-        ["Line Chart", "Area Chart", "Scatter Plot", "Candlestick"]
-    )
-    
-    show_trend = st.checkbox("Show Trend Line", value=False)
-    show_moving_avg = st.checkbox("Show Moving Average", value=False)
-    
-    if show_moving_avg:
-        window_size = st.slider("Moving Average Window", 5, 50, 20)
+st.title("🔍 SQL Query Interface")
+st.markdown("Query Unity Catalog tables directly from your Databricks workspace")
 
 
-def generate_sample_data():
-    """Generate sample timeseries data for demonstration"""
-    dates = pd.date_range(
-        start=datetime.now() - timedelta(days=365),
-        end=datetime.now(),
-        freq='D'
-    )
-    
-    # Generate some sample data with trend and seasonality
-    import numpy as np
-    np.random.seed(42)
-    
-    trend = np.linspace(100, 150, len(dates))
-    seasonal = 20 * np.sin(np.linspace(0, 4 * np.pi, len(dates)))
-    noise = np.random.normal(0, 5, len(dates))
-    
-    values = trend + seasonal + noise
-    
-    df = pd.DataFrame({
-        'timestamp': dates,
-        'value': values,
-        'category': np.random.choice(['A', 'B', 'C'], len(dates))
-    })
-    
-    return df
 
 
 @st.cache_resource
@@ -105,8 +51,8 @@ def get_databricks_connection():
         return None, f"Connection failed: {str(e)}. Ensure 'databricks auth login' is configured for profile '{DATABRICKS_PROFILE}'"
 
 
-def query_databricks_table(table_name):
-    """Query a Databricks table and return as DataFrame"""
+def execute_query(query):
+    """Execute a SQL query and return results as DataFrame"""
     connection, error = get_databricks_connection()
     
     if error:
@@ -115,9 +61,7 @@ def query_databricks_table(table_name):
     
     try:
         cursor = connection.cursor()
-        
-        # Query the table
-        cursor.execute(f"SELECT * FROM {table_name} LIMIT 10000")
+        cursor.execute(query)
         
         # Fetch results
         columns = [desc[0] for desc in cursor.description]
@@ -134,119 +78,80 @@ def query_databricks_table(table_name):
         return None
 
 
-def load_data(source_type):
-    """Load data based on selected source"""
-    if source_type == "Sample Data":
-        return generate_sample_data()
-    elif source_type == "Upload CSV":
-        uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
-        if uploaded_file is not None:
-            return pd.read_csv(uploaded_file)
-        return None
-    elif source_type == "Databricks Table":
-        # Allow user to enter table name
-        table_name = st.text_input(
-            "Enter table name (e.g., catalog.schema.table)",
-            placeholder="main.default.my_timeseries_table"
-        )
+# Input section
+st.subheader("Query Configuration")
+
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    table_name = st.text_input(
+        "Unity Catalog Table",
+        value="samples.nyctaxi.trips",
+        help="Enter the full table name: catalog.schema.table"
+    )
+
+with col2:
+    limit = st.number_input(
+        "Limit",
+        min_value=1,
+        max_value=10000,
+        value=100,
+        help="Maximum number of rows to return"
+    )
+
+# SQL Query input
+query = st.text_area(
+    "SQL Query",
+    value=f"SELECT * FROM {table_name} LIMIT {limit}",
+    height=150,
+    help="Enter your SQL query here. The table name above will be used in the default query."
+)
+
+# Update query when table name or limit changes
+if st.button("🔄 Update Query from Table Name"):
+    query = f"SELECT * FROM {table_name} LIMIT {limit}"
+    st.rerun()
+
+# Execute button
+if st.button("▶️ Execute Query", type="primary"):
+    with st.spinner("Executing query..."):
+        result_df = execute_query(query)
         
-        if table_name:
-            with st.spinner(f"Loading data from {table_name}..."):
-                return query_databricks_table(table_name)
-        else:
-            st.info("👆 Enter a Databricks table name above to load data")
-        return None
-    
-    return None
-
-
-# Load the data
-df = load_data(data_source)
-
-if df is not None:
-    # Main content area
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("Total Records", f"{len(df):,}")
-    
-    with col2:
-        if 'timestamp' in df.columns:
-            st.metric("Date Range", f"{(df['timestamp'].max() - df['timestamp'].min()).days} days")
-    
-    with col3:
-        if 'value' in df.columns:
-            st.metric("Avg Value", f"{df['value'].mean():.2f}")
-    
-    st.markdown("---")
-    
-    # Data preview
-    with st.expander("📊 Data Preview", expanded=False):
-        st.dataframe(df.head(100), use_container_width=True)
-    
-    # Main visualization
-    st.subheader("Visualization")
-    
-    if 'timestamp' in df.columns and 'value' in df.columns:
-        # Create the base chart
-        if chart_type == "Line Chart":
-            fig = px.line(df, x='timestamp', y='value', title='Timeseries Data')
-        elif chart_type == "Area Chart":
-            fig = px.area(df, x='timestamp', y='value', title='Timeseries Data')
-        elif chart_type == "Scatter Plot":
-            fig = px.scatter(df, x='timestamp', y='value', title='Timeseries Data')
-        elif chart_type == "Candlestick":
-            # For candlestick, we'd need OHLC data - using line as fallback
-            fig = px.line(df, x='timestamp', y='value', title='Timeseries Data')
-        
-        # Add moving average if requested
-        if show_moving_avg:
-            df['moving_avg'] = df['value'].rolling(window=window_size).mean()
-            fig.add_scatter(
-                x=df['timestamp'], 
-                y=df['moving_avg'],
-                mode='lines',
-                name=f'MA({window_size})',
-                line=dict(color='red', dash='dash')
+        if result_df is not None:
+            st.success(f"✅ Query executed successfully! Returned {len(result_df):,} rows")
+            
+            # Display results
+            st.subheader("Query Results")
+            
+            # Metrics
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Rows", f"{len(result_df):,}")
+            with col2:
+                st.metric("Columns", len(result_df.columns))
+            with col3:
+                st.metric("Memory", f"{result_df.memory_usage(deep=True).sum() / 1024**2:.2f} MB")
+            
+            # Data table
+            st.dataframe(result_df, use_container_width=True, height=400)
+            
+            # Download button
+            csv = result_df.to_csv(index=False)
+            st.download_button(
+                label="📥 Download as CSV",
+                data=csv,
+                file_name="query_results.csv",
+                mime="text/csv"
             )
-        
-        # Update layout
-        fig.update_layout(
-            xaxis_title="Time",
-            yaxis_title="Value",
-            hovermode='x unified',
-            height=500
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Statistics section
-        st.subheader("📉 Statistics")
-        
-        stats_col1, stats_col2 = st.columns(2)
-        
-        with stats_col1:
-            st.write("**Summary Statistics**")
-            st.dataframe(df[['value']].describe())
-        
-        with stats_col2:
-            st.write("**Distribution**")
-            fig_hist = px.histogram(df, x='value', nbins=50)
-            st.plotly_chart(fig_hist, use_container_width=True)
-    
-    else:
-        st.warning("Please ensure your data contains 'timestamp' and 'value' columns")
-
 else:
-    st.info("👈 Select a data source from the sidebar to get started")
-
+    st.info("👆 Click 'Execute Query' to run your SQL query")
 
 # Footer
 st.markdown("---")
 st.markdown(
-    """
+    f"""
     <div style='text-align: center; color: gray; font-size: 0.8em;'>
-    Databricks Timeseries Explorer App | Built with Streamlit
+    Connected to: {DATABRICKS_PROFILE} | Warehouse ID: {SQL_WAREHOUSE_ID}
     </div>
     """,
     unsafe_allow_html=True
