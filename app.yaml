@@ -10,12 +10,11 @@ env:
     value: "true"
 
 # Compute resources
-# IMPORTANT: Update sql_warehouse_id before deploying to logfood-central
-# Find your SQL Warehouse ID in Databricks UI: SQL > Warehouses
-# resources:
-#   sql_warehouse_id: "your-warehouse-id-here"
+# Using Serverless Starter Warehouse for pm-bootcamp
+resources:
+  sql_warehouse_id: "9851b1483bb515e6"
 
 # When deployed, the app will use:
-# - The SQL Warehouse specified above for queries
+# - The Serverless Starter Warehouse for queries
 # - App service principal authentication (not user credentials)
 # - Serverless compute for running the Streamlit app

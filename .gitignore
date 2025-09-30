@@ -47,7 +47,7 @@ venv.bak/
 *.ipynb
 
 # Environment variables
-.env
+# .env is now tracked for convenience with Starter Warehouse
 .env.local
 .env.*.local
 

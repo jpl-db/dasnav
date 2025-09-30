@@ -39,20 +39,13 @@ databricks auth login --host https://your-workspace.cloud.databricks.com --profi
 
 ### Setup Steps
 
-#### 1. Configure SQL Warehouse
+#### 1. SQL Warehouse Configuration
 
-Create a `.env` file from the example:
+The app is pre-configured to use the **Serverless Starter Warehouse** in pm-bootcamp:
+- Warehouse ID: `9851b1483bb515e6`
+- Already set in `.env` and `app.yaml`
 
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and add your SQL Warehouse ID:
-```
-DATABRICKS_SQL_WAREHOUSE_ID=your-warehouse-id-here
-```
-
-Find your SQL Warehouse ID in Databricks: **SQL** > **Warehouses** > Your Warehouse > Copy ID from URL
+No additional configuration needed! ✅
 
 #### 2. Install Python Dependencies
 
@@ -162,16 +155,13 @@ dasnav/
 
 ### Databricks SQL Warehouse
 
-To connect to Databricks tables, set your SQL Warehouse ID in `.env`:
+The app uses the **Serverless Starter Warehouse** (ID: `9851b1483bb515e6`) for both local development and deployment.
 
-```bash
-DATABRICKS_SQL_WAREHOUSE_ID=your-warehouse-id-here
-```
+This warehouse is pre-configured in:
+- `.env` - for local development
+- `app.yaml` - for deployment
 
-You can find your SQL Warehouse ID in Databricks:
-1. Go to **SQL** > **Warehouses**
-2. Click on your warehouse
-3. Copy the ID from the URL or warehouse details
+If you need to use a different warehouse, update both files with the new warehouse ID.
 
 ### Environment Variables
 
