@@ -31,7 +31,6 @@ st.markdown("Query Unity Catalog tables directly from your Databricks workspace"
 
 
 
-@st.cache_resource
 def get_databricks_connection():
     """Get Databricks SQL connection using CLI profile credentials"""
     try:
@@ -68,6 +67,7 @@ def get_databricks_connection():
 
 def execute_query(query):
     """Execute a SQL query and return results as DataFrame"""
+    # Create fresh connection for each query (don't cache to avoid token expiry issues)
     connection, error = get_databricks_connection()
     
     if error:
@@ -83,6 +83,7 @@ def execute_query(query):
         rows = cursor.fetchall()
         
         cursor.close()
+        connection.close()  # Clean up connection after query
         
         # Convert to DataFrame
         df = pd.DataFrame(rows, columns=columns)
@@ -90,6 +91,11 @@ def execute_query(query):
         
     except Exception as e:
         st.error(f"❌ Query Error: {str(e)}")
+        # Try to close connection on error
+        try:
+            connection.close()
+        except:
+            pass
         return None
 
 
@@ -148,7 +154,7 @@ if st.button("▶️ Execute Query", type="primary"):
                 st.metric("Memory", f"{result_df.memory_usage(deep=True).sum() / 1024**2:.2f} MB")
             
             # Data table
-            st.dataframe(result_df, use_container_width=True, height=400)
+            st.dataframe(result_df, width="stretch", height=400)
             
             # Download button
             csv = result_df.to_csv(index=False)
