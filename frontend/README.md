@@ -1,92 +1,73 @@
-# Frontend - Lovable Integration
+# Welcome to your Lovable project
 
-## 🎯 Recommended Setup: Separate Repositories
+## Project info
 
-**Keep your Lovable project in its own repo** to avoid conflicts:
+**URL**: https://lovable.dev/projects/f4359c07-c3fc-4c76-baba-063daa41def3
 
-```
-lovable-dasnav-ui/     ← Lovable manages this repo
-└── Your Lovable UI
+## How can I edit this code?
 
-dasnav/frontend/       ← Copy here when ready to integrate
-└── Lovable UI + API integration
-```
+There are several ways of editing your application.
 
-### Why Separate Repos?
-- ✅ Lovable can auto-commit without conflicts
-- ✅ Cursor/you edit backend without touching Lovable
-- ✅ Clean separation of concerns
-- ✅ Copy to dasnav only when UI is ready
+**Use Lovable**
 
-## 📋 Integration Steps
+Simply visit the [Lovable Project](https://lovable.dev/projects/f4359c07-c3fc-4c76-baba-063daa41def3) and start prompting.
 
-### Step 1: Let Lovable Create Its Repo
-1. In Lovable: Settings → GitHub
-2. Create new repo (e.g., `lovable-dasnav-ui`)
-3. Let Lovable manage that repo
+Changes made via Lovable will be committed automatically to this repo.
 
-### Step 2: When Ready, Copy to dasnav
+**Use your preferred IDE**
 
-```bash
-# Clone your Lovable repo
-cd ~/code
-git clone https://github.com/YOUR-USERNAME/lovable-dasnav-ui.git
+If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
 
-# Copy to this directory
-cd ~/code/dasnav/frontend
-cp -r ~/code/lovable-dasnav-ui/* .
-```
+The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
-### Step 3: Add API Integration
+Follow these steps:
 
-Place files here:
-```
-frontend/
-├── package.json       # From Lovable (add proxy config)
-├── src/               # Your React components
-│   └── utils/
-│       └── api.js    # Add this for backend calls
-├── public/            # Static assets
-└── ...                # Other Lovable files
+```sh
+# Step 1: Clone the repository using the project's Git URL.
+git clone <YOUR_GIT_URL>
+
+# Step 2: Navigate to the project directory.
+cd <YOUR_PROJECT_NAME>
+
+# Step 3: Install the necessary dependencies.
+npm i
+
+# Step 4: Start the development server with auto-reloading and an instant preview.
+npm run dev
 ```
 
-3. **Update API Calls:**
-   Your Lovable components will call the backend API at `/api/*` endpoints:
-   
-   ```javascript
-   // Example: Execute a query
-   const runQuery = async (sql) => {
-     const response = await fetch('/api/query', {
-       method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
-       body: JSON.stringify({ query: sql })
-     });
-     const result = await response.json();
-     return result.data;
-   };
-   ```
+**Edit a file directly in GitHub**
 
-4. **Available API Endpoints:**
-   - `GET /api/health` - Health check
-   - `GET /api/test-connection` - Test DB connection
-   - `POST /api/query` - Execute SQL query
-   - `GET /api/schema/:table_name` - Get table schema
+- Navigate to the desired file(s).
+- Click the "Edit" button (pencil icon) at the top right of the file view.
+- Make your changes and commit the changes.
 
-### Local Development:
+**Use GitHub Codespaces**
 
-Once you've dropped your Lovable code here:
+- Navigate to the main page of your repository.
+- Click on the "Code" button (green button) near the top right.
+- Select the "Codespaces" tab.
+- Click on "New codespace" to launch a new Codespace environment.
+- Edit files directly within the Codespace and commit and push your changes once you're done.
 
-```bash
-# Install dependencies
-cd frontend
-npm install
+## What technologies are used for this project?
 
-# Run frontend (typically on port 3000)
-npm start
-```
+This project is built with:
 
-The backend API will run on port 8001, and your frontend will proxy requests to it.
+- Vite
+- TypeScript
+- React
+- shadcn-ui
+- Tailwind CSS
 
-### Example Integration:
+## How can I deploy this project?
 
-See `INTEGRATION_EXAMPLE.md` for sample React code showing how to call the backend APIs.
+Simply open [Lovable](https://lovable.dev/projects/f4359c07-c3fc-4c76-baba-063daa41def3) and click on Share -> Publish.
+
+## Can I connect a custom domain to my Lovable project?
+
+Yes, you can!
+
+To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+
+Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
