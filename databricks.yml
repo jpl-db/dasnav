@@ -1,0 +1,18 @@
+# Databricks App Configuration
+# See: https://docs.databricks.com/dev-tools/databricks-apps/
+
+# Command to start the app
+command: ["streamlit", "run", "app.py", "--server.port", "8080", "--server.enableCORS", "false"]
+
+# Environment variables (optional)
+env:
+  - name: STREAMLIT_SERVER_HEADLESS
+    value: "true"
+
+# Compute resources
+resources:
+  # SQL Warehouse for data access (optional - update with your warehouse ID)
+  # sql_warehouse_id: "your-warehouse-id-here"
+  
+  # Serverless compute is used by default for Databricks Apps
+  # No additional compute configuration needed
