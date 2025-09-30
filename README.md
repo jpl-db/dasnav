@@ -1,17 +1,17 @@
-# Timeseries Data Explorer
+# SQL Query Interface
 
-A Databricks App for exploring and visualizing timeseries data interactively.
+A simple Databricks App for querying Unity Catalog tables directly.
 
 **GitHub Repository**: https://github.com/jpl-db/dasnav  
 **Databricks App URL**: https://dasnav-3755057911985085.staging.aws.databricksapps.com
 
 ## Overview
 
-This app provides an interactive interface for:
-- Loading timeseries data from multiple sources (CSV uploads, Databricks tables, or sample data)
-- Visualizing data with various chart types (line, area, scatter, candlestick)
-- Computing and displaying moving averages and trend lines
-- Analyzing basic statistics and distributions
+This app provides a minimal SQL query interface for:
+- Querying Unity Catalog tables
+- Executing custom SQL queries
+- Viewing results in an interactive table
+- Downloading query results as CSV
 
 ## Prerequisites
 
@@ -138,18 +138,17 @@ dasnav/
 ## Features
 
 ### Current Features
-- 📊 Multiple data source support (CSV upload, sample data)
-- 📈 Multiple visualization types (line, area, scatter charts)
-- 📉 Statistical analysis and distribution plots
-- 🔄 Moving average calculations
-- 📱 Responsive layout
+- 🔍 SQL query execution against Unity Catalog
+- 📊 Interactive results table
+- 📥 Download results as CSV
+- ⚡ Fast queries using Databricks SQL Warehouse
+- 🔐 Secure authentication via CLI profile
 
 ### Planned Features
-- 🔗 Databricks SQL table integration
-- 🤖 Anomaly detection
-- 📊 Advanced time series decomposition
-- 💾 Save and load analysis configurations
-- 📤 Export results
+- 📝 Query history
+- 💾 Saved queries
+- 📊 Data visualization
+- 📈 Query performance metrics
 
 ## Configuration
 
@@ -171,10 +170,10 @@ The app uses the following environment variables (configured in `databricks.yml`
 
 ## Usage
 
-1. **Select Data Source**: Choose from sample data, CSV upload, or Databricks table
-2. **Configure Visualization**: Select chart type and options (moving average, trend lines)
-3. **Explore Data**: View interactive charts and statistics
-4. **Analyze**: Use the built-in statistical tools to understand your data
+1. **Enter Table Name**: Default is `samples.nyctaxi.trips`, or enter any Unity Catalog table
+2. **Write SQL Query**: Edit the pre-filled query or write your own
+3. **Execute**: Click "Execute Query" to run the query
+4. **View Results**: See results in an interactive table with download option
 
 ## Databricks Environment
 
