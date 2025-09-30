@@ -9,6 +9,12 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import os
+from dotenv import load_dotenv
+from databricks import sql
+from databricks.sdk import WorkspaceClient
+
+# Load environment variables from .env file for local development
+load_dotenv()
 
 # Configure the Streamlit page
 st.set_page_config(
@@ -75,6 +81,72 @@ def generate_sample_data():
     return df
 
 
+@st.cache_resource
+def get_databricks_connection():
+    """Get Databricks SQL connection using workspace authentication"""
+    try:
+        # Get configuration from environment or Databricks Apps context
+        host = os.getenv("DATABRICKS_HOST")
+        warehouse_id = os.getenv("DATABRICKS_SQL_WAREHOUSE_ID")
+        token = os.getenv("DATABRICKS_TOKEN")
+        
+        if not host or not warehouse_id:
+            return None, "Please set DATABRICKS_HOST and DATABRICKS_SQL_WAREHOUSE_ID in your .env file"
+        
+        # Use OAuth or PAT depending on what's available
+        if token:
+            # Use Personal Access Token
+            connection = sql.connect(
+                server_hostname=host.replace("https://", ""),
+                http_path=f"/sql/1.0/warehouses/{warehouse_id}",
+                access_token=token
+            )
+        else:
+            # Try to use OAuth from Databricks CLI authentication
+            try:
+                w = WorkspaceClient()
+                connection = sql.connect(
+                    server_hostname=host.replace("https://", ""),
+                    http_path=f"/sql/1.0/warehouses/{warehouse_id}",
+                    credentials_provider=lambda: w.config.authenticate
+                )
+            except Exception as e:
+                return None, f"OAuth authentication failed. Run: databricks auth login --host {host}"
+        
+        return connection, None
+    except Exception as e:
+        return None, str(e)
+
+
+def query_databricks_table(table_name):
+    """Query a Databricks table and return as DataFrame"""
+    connection, error = get_databricks_connection()
+    
+    if error:
+        st.error(f"❌ Connection Error: {error}")
+        return None
+    
+    try:
+        cursor = connection.cursor()
+        
+        # Query the table
+        cursor.execute(f"SELECT * FROM {table_name} LIMIT 10000")
+        
+        # Fetch results
+        columns = [desc[0] for desc in cursor.description]
+        rows = cursor.fetchall()
+        
+        cursor.close()
+        
+        # Convert to DataFrame
+        df = pd.DataFrame(rows, columns=columns)
+        return df
+        
+    except Exception as e:
+        st.error(f"❌ Query Error: {str(e)}")
+        return None
+
+
 def load_data(source_type):
     """Load data based on selected source"""
     if source_type == "Sample Data":
@@ -85,10 +157,18 @@ def load_data(source_type):
             return pd.read_csv(uploaded_file)
         return None
     elif source_type == "Databricks Table":
-        # Placeholder for Databricks SQL connection
-        st.info("Connect to Databricks SQL to query tables")
-        # TODO: Implement Databricks SQL connection
-        return generate_sample_data()
+        # Allow user to enter table name
+        table_name = st.text_input(
+            "Enter table name (e.g., catalog.schema.table)",
+            placeholder="main.default.my_timeseries_table"
+        )
+        
+        if table_name:
+            with st.spinner(f"Loading data from {table_name}..."):
+                return query_databricks_table(table_name)
+        else:
+            st.info("👆 Enter a Databricks table name above to load data")
+        return None
     
     return None
 

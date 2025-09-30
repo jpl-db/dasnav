@@ -23,23 +23,60 @@ This app provides an interactive interface for:
 
 ## Installation
 
-### 1. Install Databricks CLI
+### Quick Setup (Recommended)
+
+Run the automated setup script to configure authentication:
+
+```bash
+./setup_auth.sh
+```
+
+This will:
+1. Check/install Databricks CLI
+2. Set up OAuth authentication for logfood-central
+3. Create a `.env` file with your credentials
+4. Configure SQL Warehouse access
+
+### Manual Setup
+
+If you prefer to set up manually:
+
+#### 1. Install Databricks CLI
 
 ```bash
 # Install or update Databricks CLI
 curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
 ```
 
-### 2. Configure Authentication
+#### 2. Configure Authentication for logfood-central
 
 ```bash
-# Set up OAuth authentication
-databricks auth login --host https://your-workspace-url.cloud.databricks.com
+# Set up OAuth authentication (recommended)
+databricks auth login --host https://your-logfood-workspace.cloud.databricks.com
 ```
 
-### 3. Install Python Dependencies
+This creates authentication credentials in `~/.databrickscfg` that the app will use.
+
+#### 3. Create .env File
+
+Copy the template and fill in your values:
 
 ```bash
+cp env.template .env
+```
+
+Edit `.env` and set:
+- `DATABRICKS_HOST`: Your logfood-central workspace URL
+- `DATABRICKS_SQL_WAREHOUSE_ID`: Your SQL Warehouse ID (find in Databricks UI under SQL > Warehouses)
+
+#### 4. Install Python Dependencies
+
+```bash
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
@@ -50,10 +87,38 @@ pip install -r requirements.txt
 To test the app locally before deploying to Databricks:
 
 ```bash
-streamlit run app.py
+# Activate virtual environment
+source venv/bin/activate
+
+# Run the app
+streamlit run app.py --server.port 8000
 ```
 
-The app will be available at `http://localhost:8501`
+The app will be available at `http://localhost:8000`
+
+### Querying Databricks Tables Locally
+
+When you select "Databricks Table" as the data source, the app will:
+1. Use your authenticated Databricks credentials (from `databricks auth login`)
+2. Connect to the SQL Warehouse specified in your `.env` file
+3. Run queries as YOUR user (with your permissions)
+
+This means:
+- ✅ You can test with real Databricks data locally
+- ✅ Queries run with your permissions and audit trail
+- ✅ No need to mock data or use different credentials
+
+### Authentication Flow
+
+**Local Development:**
+- Uses OAuth credentials from `databricks auth login` (stored in `~/.databrickscfg`)
+- Queries run as your user account
+- Full access to tables you have permissions for
+
+**Deployed App:**
+- Uses the app's service principal or configured credentials
+- Queries run as the app user
+- Access controlled by app permissions
 
 ## Deploying to Databricks
 
@@ -112,12 +177,16 @@ dasnav/
 
 ### Databricks SQL Warehouse
 
-To connect to Databricks tables, update `databricks.yml` with your SQL Warehouse ID:
+To connect to Databricks tables, set your SQL Warehouse ID in `.env`:
 
-```yaml
-resources:
-  sql_warehouse_id: "your-warehouse-id-here"
+```bash
+DATABRICKS_SQL_WAREHOUSE_ID=your-warehouse-id-here
 ```
+
+You can find your SQL Warehouse ID in Databricks:
+1. Go to **SQL** > **Warehouses**
+2. Click on your warehouse
+3. Copy the ID from the URL or warehouse details
 
 ### Environment Variables
 

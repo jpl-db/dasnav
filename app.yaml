@@ -1,0 +1,21 @@
+# Databricks App Configuration for logfood-central
+# See: https://docs.databricks.com/dev-tools/databricks-apps/
+
+# Command to start the app
+command: ["streamlit", "run", "app.py", "--server.port", "8000", "--server.enableCORS", "false"]
+
+# Environment variables
+env:
+  - name: STREAMLIT_SERVER_HEADLESS
+    value: "true"
+
+# Compute resources
+# IMPORTANT: Update sql_warehouse_id before deploying to logfood-central
+# Find your SQL Warehouse ID in Databricks UI: SQL > Warehouses
+# resources:
+#   sql_warehouse_id: "your-warehouse-id-here"
+
+# When deployed, the app will use:
+# - The SQL Warehouse specified above for queries
+# - App service principal authentication (not user credentials)
+# - Serverless compute for running the Streamlit app
