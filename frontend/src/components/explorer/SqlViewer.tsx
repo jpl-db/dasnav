@@ -2,7 +2,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Copy, Code2 } from "lucide-react";
 import { toast } from "sonner";
-import { useState } from "react";
+import { buildQuery } from "@/lib/queryBuilder";
+import { useMemo } from "react";
 
 interface SchemaColumn {
   name: string;
@@ -46,72 +47,28 @@ interface SqlViewerProps {
 }
 
 const SqlViewer = ({ table, schema, config }: SqlViewerProps) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  const generateSQL = () => {
-    const timeColumn = schema.find(col => col.role === 'time')?.name || 'timestamp';
-    
-    if (config.chartType === 'period-over-period') {
-      const metric = config.popConfig;
-      const offsetMap: Record<string, string> = {
-        day: 'DAY',
-        week: 'WEEK',
-        month: 'MONTH',
-        quarter: 'QUARTER',
-        year: 'YEAR'
-      };
-      const offsetUnit = offsetMap[metric.compareUnit];
-      
-      return `-- Period over Period Comparison
-WITH current_period AS (
-  SELECT
-    DATE_TRUNC('${config.grain}', ${timeColumn}) as time_bucket,
-    ${metric.aggregation.toUpperCase()}(${metric.metric}) as value
-  FROM ${table}
-  WHERE ${timeColumn} >= DATEADD(${offsetUnit}, -${metric.compareCount}, CURRENT_DATE())
-  GROUP BY time_bucket
-),
-previous_period AS (
-  SELECT
-    DATE_TRUNC('${config.grain}', ${timeColumn}) as time_bucket,
-    ${metric.aggregation.toUpperCase()}(${metric.metric}) as value
-  FROM ${table}
-  WHERE ${timeColumn} >= DATEADD(${offsetUnit}, -${metric.compareCount * 2}, CURRENT_DATE())
-    AND ${timeColumn} < DATEADD(${offsetUnit}, -${metric.compareCount}, CURRENT_DATE())
-  GROUP BY time_bucket
-)
-SELECT 
-  c.time_bucket,
-  c.value as current_value,
-  p.value as previous_value,
-  ((c.value - p.value) / NULLIF(p.value, 0)) * 100 as pct_change
-FROM current_period c
-LEFT JOIN previous_period p ON c.time_bucket = p.time_bucket
-ORDER BY c.time_bucket DESC;`;
-    } else {
-      const metricExpressions = config.metrics.length > 0
-        ? config.metrics.map(m => {
-            const alias = m.name.toLowerCase().replace(/\s+/g, '_');
-            return `  ${m.aggregation.toUpperCase()}(${m.column}) as ${alias}`;
-          }).join(',\n')
-        : '  COUNT(*) as count';
-
-      return `SELECT
-  DATE_TRUNC('${config.grain}', ${timeColumn}) as time_bucket,
-${metricExpressions}
-FROM ${table}
-GROUP BY time_bucket
-ORDER BY time_bucket DESC
-LIMIT 1000;`;
-    }
-  };
-
-  const sql = generateSQL();
+  const sql = useMemo(() => {
+    return buildQuery(table, schema, config);
+  }, [table, schema, config]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(sql);
     toast.success("SQL copied to clipboard");
   };
+
+  if (!sql || sql.trim().length === 0) {
+    return (
+      <Card className="p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <Code2 className="h-4 w-4 text-primary" />
+          <h2 className="font-semibold text-foreground">Generated SQL</h2>
+        </div>
+        <div className="rounded-md bg-muted p-4 text-center">
+          <p className="text-xs text-muted-foreground">Configure metrics to generate SQL</p>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="p-4">

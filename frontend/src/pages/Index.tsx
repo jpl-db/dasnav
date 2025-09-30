@@ -4,50 +4,81 @@ import SchemaInference from "@/components/explorer/SchemaInference";
 import ChartBuilder from "@/components/explorer/ChartBuilder";
 import ChartVisualization from "@/components/explorer/ChartVisualization";
 import SqlViewer from "@/components/explorer/SqlViewer";
+import DataConfig from "@/components/explorer/DataConfig";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { generateTimeSeriesData } from "@/lib/mockData";
+import { useDatabricksSchema } from "@/hooks/useDatabricks";
+import { useToast } from "@/hooks/use-toast";
 interface SchemaColumn {
   name: string;
   type: string;
   role: 'time' | 'metric' | 'dimension' | 'unassigned';
 }
-const MOCK_SCHEMA: SchemaColumn[] = [{
-  name: 'event_timestamp',
-  type: 'TIMESTAMP',
-  role: 'time'
-}, {
-  name: 'user_id',
-  type: 'STRING',
-  role: 'dimension'
-}, {
-  name: 'event_type',
-  type: 'STRING',
-  role: 'dimension'
-}, {
-  name: 'revenue',
-  type: 'DECIMAL',
-  role: 'metric'
-}, {
-  name: 'quantity',
-  type: 'INTEGER',
-  role: 'metric'
-}, {
-  name: 'session_duration_ms',
-  type: 'BIGINT',
-  role: 'metric'
-}, {
-  name: 'country',
-  type: 'STRING',
-  role: 'dimension'
-}, {
-  name: 'device_type',
-  type: 'STRING',
-  role: 'dimension'
-}];
+
+const inferColumnRole = (name: string, type: string): SchemaColumn['role'] => {
+  const lowerName = name.toLowerCase();
+  const upperType = type.toUpperCase();
+  
+  // Time columns
+  if (lowerName.includes('time') || lowerName.includes('date') || 
+      upperType.includes('TIMESTAMP') || upperType.includes('DATE')) {
+    return 'time';
+  }
+  
+  // Metric columns (numeric types)
+  if (upperType.includes('INT') || upperType.includes('DECIMAL') || 
+      upperType.includes('FLOAT') || upperType.includes('DOUBLE') || 
+      upperType.includes('NUMERIC')) {
+    return 'metric';
+  }
+  
+  // Dimension columns (strings, etc.)
+  if (upperType.includes('STRING') || upperType.includes('VARCHAR') || 
+      upperType.includes('CHAR')) {
+    return 'dimension';
+  }
+  
+  return 'unassigned';
+};
+
 const Index = () => {
-  const [selectedTable] = useState<string>("analytics.events.user_events");
-  const [schema, setSchema] = useState<SchemaColumn[]>(MOCK_SCHEMA);
-  const [mockData] = useState(() => generateTimeSeriesData(180)); // 6 months of data
+  const { toast } = useToast();
+  const [tableName, setTableName] = useState<string>("samples.nyctaxi.trips");
+  const [schema, setSchema] = useState<SchemaColumn[]>([]);
+  
+  // Fetch schema from backend
+  const { 
+    data: rawSchema, 
+    isLoading: schemaLoading, 
+    error: schemaError,
+    refetch: refetchSchema 
+  } = useDatabricksSchema(tableName, tableName.trim().length > 0);
+
+  // Update schema when raw schema changes (use useEffect to avoid infinite re-renders)
+  useEffect(() => {
+    if (rawSchema && rawSchema.length > 0) {
+      const schemaWithRoles = rawSchema.map(col => ({
+        ...col,
+        role: inferColumnRole(col.name, col.type)
+      }));
+      setSchema(schemaWithRoles);
+    }
+  }, [rawSchema]);
+
+  // Show error toast (use useEffect to avoid infinite re-renders)
+  useEffect(() => {
+    if (schemaError) {
+      toast({
+        title: "Schema Fetch Error",
+        description: schemaError.message,
+        variant: "destructive",
+      });
+    }
+  }, [schemaError, toast]);
+
+  const handleRefreshSchema = () => {
+    setSchema([]);
+    refetchSchema();
+  };
   const [chartConfig, setChartConfig] = useState({
     chartType: 'default' as 'default' | 'period-over-period',
     grain: 'day' as 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year',
@@ -106,13 +137,15 @@ const Index = () => {
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-foreground">Unity Catalog Explorer</h1>
-                <p className="text-sm text-muted-foreground">Interactive time-series analysis</p>
+                <p className="text-sm text-muted-foreground">Interactive time-series analysis & visualization</p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-xs font-medium text-muted-foreground">Connected to</p>
-              <p className="text-sm font-semibold text-foreground">{selectedTable}</p>
-              <p className="text-xs text-muted-foreground">{mockData.length.toLocaleString()} rows</p>
+              <p className="text-xs font-medium text-muted-foreground">Current Table</p>
+              <p className="text-sm font-mono font-semibold text-foreground">{tableName}</p>
+              <p className="text-xs text-muted-foreground">
+                {schema.length > 0 ? `${schema.length} columns` : schemaLoading ? 'Loading...' : 'No schema'}
+              </p>
             </div>
           </div>
         </div>
@@ -122,23 +155,37 @@ const Index = () => {
       <main className="container mx-auto px-6 py-6">
         <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
           {/* Left Sidebar - Controls */}
-          <Tabs defaultValue="chart-builder" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="chart-builder">Chart Builder</TabsTrigger>
-              <TabsTrigger value="schema-roles">Data config</TabsTrigger>
+          <Tabs defaultValue="data-config" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="data-config">Data</TabsTrigger>
+              <TabsTrigger value="schema-roles">Schema</TabsTrigger>
+              <TabsTrigger value="chart-builder">Chart</TabsTrigger>
             </TabsList>
-            <TabsContent value="chart-builder" className="space-y-4">
-              <ChartBuilder schema={schema} config={chartConfig} onConfigChange={setChartConfig} />
+            <TabsContent value="data-config" className="space-y-4">
+              <DataConfig
+                tableName={tableName}
+                onTableNameChange={setTableName}
+                onRefresh={handleRefreshSchema}
+                isLoading={schemaLoading}
+              />
             </TabsContent>
             <TabsContent value="schema-roles" className="space-y-4">
               <SchemaInference schema={schema} onSchemaUpdate={setSchema} />
+            </TabsContent>
+            <TabsContent value="chart-builder" className="space-y-4">
+              <ChartBuilder schema={schema} config={chartConfig} onConfigChange={setChartConfig} />
             </TabsContent>
           </Tabs>
 
           {/* Right Main Area - Visualization */}
           <div className="space-y-4">
-            <ChartVisualization table={selectedTable} schema={schema} config={chartConfig} mockData={mockData} onConfigChange={setChartConfig} />
-            <SqlViewer table={selectedTable} schema={schema} config={chartConfig} />
+            <ChartVisualization 
+              table={tableName} 
+              schema={schema} 
+              config={chartConfig} 
+              onConfigChange={setChartConfig} 
+            />
+            <SqlViewer table={tableName} schema={schema} config={chartConfig} />
           </div>
         </div>
       </main>

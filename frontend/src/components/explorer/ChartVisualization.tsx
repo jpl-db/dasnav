@@ -1,10 +1,15 @@
 import { Card } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LegendProps } from "recharts";
-import { aggregateData, aggregateDataPoP, TimeSeriesRow } from "@/lib/mockData";
 import { useMemo } from "react";
 import TimeRangeSelector from "./TimeRangeSelector";
 import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
+import { CHART_COLORS, formatValue, calculateNiceDomain } from "@/lib/chartUtils";
+import LegendTable from "./legend/LegendTable";
+import LegendList from "./legend/LegendList";
+import { buildQuery } from "@/lib/queryBuilder";
+import { useDatabricksQuery } from "@/hooks/useDatabricks";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
 
 interface SchemaColumn {
   name: string;
@@ -45,120 +50,139 @@ interface ChartVisualizationProps {
   table: string;
   schema: SchemaColumn[];
   config: ChartConfig;
-  mockData: TimeSeriesRow[];
   onConfigChange: (config: ChartConfig) => void;
 }
 
-const CHART_COLORS = [
-  'hsl(var(--chart-1))',
-  'hsl(var(--chart-2))',
-  'hsl(var(--chart-3))',
-  'hsl(var(--chart-4))',
-  'hsl(var(--chart-5))',
-];
 
-const formatValue = (value: number, format: string): string => {
-  if (value === null || value === undefined) return 'N/A';
-  
-  switch (format) {
-    case 'currency':
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(value);
-    
-    case 'percent':
-      return `${value.toFixed(2)}%`;
-    
-    case 'short':
-      if (value >= 1000000000) return `${(value / 1000000000).toFixed(1)}B`;
-      if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-      if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
-      return value.toFixed(0);
-    
-    case 'decimal':
-      return value.toFixed(2);
-    
-    case 'number':
-    default:
-      return new Intl.NumberFormat('en-US', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2,
-      }).format(value);
-  }
-};
+const ChartVisualization = ({ table, schema, config, onConfigChange }: ChartVisualizationProps) => {
+  // Build SQL query
+  const sqlQuery = useMemo(() => {
+    return buildQuery(table, schema, config);
+  }, [table, schema, config]);
 
-type SummaryType = 'total' | 'average' | 'min' | 'max' | 'first' | 'last' | 'current';
-
-const calculateSummary = (data: any[], dataKey: string, summaryType: SummaryType): number => {
-  const values = data.map(d => d[dataKey]).filter(v => v !== null && v !== undefined);
-  
-  if (values.length === 0) return 0;
-  
-  switch (summaryType) {
-    case 'total':
-      return values.reduce((sum, val) => sum + val, 0);
-    case 'average':
-      return values.reduce((sum, val) => sum + val, 0) / values.length;
-    case 'min':
-      return Math.min(...values);
-    case 'max':
-      return Math.max(...values);
-    case 'first':
-      return values[0];
-    case 'last':
-      return values[values.length - 1];
-    case 'current':
-      return values[values.length - 1]; // Same as last for now
-    default:
-      return 0;
-  }
-};
-
-const getSummaryLabel = (type: SummaryType): string => {
-  const labels: Record<SummaryType, string> = {
-    total: 'Total',
-    average: 'Avg',
-    min: 'Min',
-    max: 'Max',
-    first: 'First',
-    last: 'Last',
-    current: 'Current'
-  };
-  return labels[type];
-};
-
-const ChartVisualization = ({ table, schema, config, mockData, onConfigChange }: ChartVisualizationProps) => {
-  // Filter data by date range first
-  const filteredData = useMemo(() => {
-    if (!config.dateRange.start && !config.dateRange.end) return mockData;
-    
-    return mockData.filter(row => {
-      const rowDate = new Date(row.event_timestamp);
-      if (config.dateRange.start && rowDate < config.dateRange.start) return false;
-      if (config.dateRange.end && rowDate > config.dateRange.end) return false;
-      return true;
-    });
-  }, [mockData, config.dateRange]);
-
-  const aggregatedData = useMemo(() => {
-    if (config.chartType === 'period-over-period') {
-      return aggregateDataPoP(
-        filteredData,
-        config.grain,
-        { column: config.popConfig.metric, aggregation: config.popConfig.aggregation },
-        config.popConfig.compareUnit,
-        config.popConfig.compareCount
-      );
-    } else {
-      if (config.metrics.length === 0) return [];
-      return aggregateData(filteredData, config.grain, config.metrics);
-    }
-  }, [filteredData, config]);
-
+  // Fetch data from API
   const hasMetrics = config.chartType === 'period-over-period' || config.metrics.length > 0;
+  const { data: rawData, isLoading, error } = useDatabricksQuery(
+    sqlQuery,
+    hasMetrics && sqlQuery.length > 0
+  );
+
+  // Process data for visualization
+  const aggregatedData = useMemo(() => {
+    if (!rawData || rawData.length === 0) return [];
+    
+    // Check if data has 'time' field (from backend) or needs aggregation (raw taxi data)
+    const hasTimeField = rawData[0] && 'time' in rawData[0];
+    
+    if (hasTimeField) {
+      // Data is already aggregated from backend, just format timestamps
+      return rawData.map(row => ({
+        ...row,
+        time: row.time ? format(new Date(row.time), 'MMM d, yyyy') : 'N/A'
+      }));
+    } else {
+      // Raw taxi data - need to aggregate it
+      // This handles mock data that hasn't been aggregated by SQL
+      const timeColumn = schema.find(col => col.role === 'time')?.name || 'tpep_pickup_datetime';
+      
+      // Group by time grain
+      const grouped = new Map<string, any>();
+      
+      rawData.forEach(row => {
+        const timestamp = new Date(row[timeColumn]);
+        let timeKey: string;
+        
+        // Truncate timestamp based on grain
+        switch (config.grain) {
+          case 'hour':
+            timestamp.setMinutes(0, 0, 0);
+            break;
+          case 'day':
+            timestamp.setHours(0, 0, 0, 0);
+            break;
+          case 'week':
+            const day = timestamp.getDay();
+            timestamp.setDate(timestamp.getDate() - day);
+            timestamp.setHours(0, 0, 0, 0);
+            break;
+          case 'month':
+            timestamp.setDate(1);
+            timestamp.setHours(0, 0, 0, 0);
+            break;
+          case 'quarter':
+            const quarter = Math.floor(timestamp.getMonth() / 3);
+            timestamp.setMonth(quarter * 3, 1);
+            timestamp.setHours(0, 0, 0, 0);
+            break;
+          case 'year':
+            timestamp.setMonth(0, 1);
+            timestamp.setHours(0, 0, 0, 0);
+            break;
+        }
+        
+        timeKey = timestamp.toISOString();
+        
+        if (!grouped.has(timeKey)) {
+          grouped.set(timeKey, {
+            time: format(timestamp, 'MMM d, yyyy'),
+            timestamp: timestamp,
+            values: {}
+          });
+        }
+        
+        const entry = grouped.get(timeKey)!;
+        
+        // Aggregate metrics
+        if (config.chartType === 'default') {
+          config.metrics.forEach(metric => {
+            const key = `${metric.aggregation}_${metric.column}`;
+            const value = Number(row[metric.column]) || 0;
+            
+            if (!entry.values[key]) {
+              entry.values[key] = { sum: 0, count: 0, min: Infinity, max: -Infinity };
+            }
+            
+            entry.values[key].sum += value;
+            entry.values[key].count += 1;
+            entry.values[key].min = Math.min(entry.values[key].min, value);
+            entry.values[key].max = Math.max(entry.values[key].max, value);
+          });
+        }
+      });
+      
+      // Convert to array and calculate final aggregations
+      return Array.from(grouped.values())
+        .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+        .map(entry => {
+          const result: any = { time: entry.time };
+          
+          Object.keys(entry.values).forEach(key => {
+            const values = entry.values[key];
+            const [agg] = key.split('_');
+            
+            switch (agg) {
+              case 'sum':
+                result[key] = values.sum;
+                break;
+              case 'avg':
+                result[key] = values.sum / values.count;
+                break;
+              case 'count':
+                result[key] = values.count;
+                break;
+              case 'min':
+                result[key] = values.min;
+                break;
+              case 'max':
+                result[key] = values.max;
+                break;
+            }
+          });
+          
+          return result;
+        });
+    }
+  }, [rawData, config.grain, config.chartType, config.metrics, schema]);
 
   // Toggle series visibility
   const toggleSeries = (seriesName: string) => {
@@ -199,135 +223,28 @@ const ChartVisualization = ({ table, schema, config, mockData, onConfigChange }:
 
     if (config.legendConfig.layout === 'table') {
       return (
-        <div className="px-4 py-2">
-          <div className="border border-border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-left px-3 py-2 font-medium">Series</th>
-                  {config.legendConfig.showSummary && config.legendConfig.summaryTypes.map(type => (
-                    <th key={type} className="text-right px-3 py-2 font-medium">
-                      {getSummaryLabel(type)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {payload.map((entry: any, index: number) => {
-                  const isHidden = config.legendConfig.hiddenSeries.includes(entry.value);
-                  const dataKey = entry.dataKey;
-                  
-                  let metricFormat = 'number';
-                  if (config.chartType === 'period-over-period') {
-                    metricFormat = config.popConfig.format;
-                  } else {
-                    const metric = config.metrics.find(m => m.name === entry.value);
-                    if (metric) metricFormat = metric.format;
-                  }
-
-                  const summaries = config.legendConfig.showSummary
-                    ? config.legendConfig.summaryTypes.map(type => ({
-                        type,
-                        value: calculateSummary(aggregatedData, dataKey, type),
-                        label: getSummaryLabel(type)
-                      }))
-                    : [];
-
-                  return (
-                    <tr
-                      key={`legend-${index}`}
-                      className={`cursor-pointer transition-all duration-200 hover:bg-muted/30 border-t border-border ${
-                        isHidden ? 'opacity-50' : 'opacity-100'
-                      }`}
-                      onClick={() => toggleSeries(entry.value)}
-                    >
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="h-3 w-3 rounded-sm flex-shrink-0"
-                            style={{ backgroundColor: entry.color }}
-                          />
-                          <span className={`font-medium ${isHidden ? 'line-through' : ''}`}>
-                            {entry.value}
-                          </span>
-                        </div>
-                      </td>
-                      {summaries.map((summary, idx) => (
-                        <td key={idx} className="text-right px-3 py-2 font-mono text-xs">
-                          {formatValue(summary.value, metricFormat)}
-                        </td>
-                      ))}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <LegendTable
+          payload={payload}
+          aggregatedData={aggregatedData}
+          chartType={config.chartType}
+          metrics={config.metrics}
+          popConfig={config.popConfig}
+          legendConfig={config.legendConfig}
+          onToggleSeries={toggleSeries}
+        />
       );
     }
 
-    // List layout (default)
-    const layoutClass = ['top', 'bottom'].includes(config.legendConfig.position)
-      ? 'flex-row flex-wrap'
-      : 'flex-col';
-
     return (
-      <div className={`flex ${layoutClass} gap-4 px-4 py-2`}>
-        {payload.map((entry: any, index: number) => {
-          const isHidden = config.legendConfig.hiddenSeries.includes(entry.value);
-          const dataKey = entry.dataKey;
-          
-          let metricFormat = 'number';
-          if (config.chartType === 'period-over-period') {
-            metricFormat = config.popConfig.format;
-          } else {
-            const metric = config.metrics.find(m => m.name === entry.value);
-            if (metric) metricFormat = metric.format;
-          }
-
-          const summaries = config.legendConfig.showSummary
-            ? config.legendConfig.summaryTypes.map(type => ({
-                type,
-                value: calculateSummary(aggregatedData, dataKey, type),
-                label: getSummaryLabel(type)
-              }))
-            : [];
-
-          return (
-            <div
-              key={`legend-${index}`}
-              className={`flex flex-wrap items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-105 ${
-                isHidden ? 'opacity-50' : 'opacity-100'
-              }`}
-              onClick={() => toggleSeries(entry.value)}
-            >
-              <div className="flex items-center gap-2">
-                <div
-                  className="h-3 w-3 rounded-sm"
-                  style={{ backgroundColor: entry.color }}
-                />
-                <span className={`text-sm font-medium ${isHidden ? 'line-through' : ''}`}>
-                  {entry.value}
-                </span>
-              </div>
-              {config.legendConfig.showSummary && summaries.length > 0 && (
-                <>
-                  {summaries.map((summary, idx) => (
-                    <Badge
-                      key={idx}
-                      variant="secondary"
-                      className="text-xs font-normal"
-                    >
-                      {summary.label}: {formatValue(summary.value, metricFormat)}
-                    </Badge>
-                  ))}
-                </>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <LegendList
+        payload={payload}
+        aggregatedData={aggregatedData}
+        chartType={config.chartType}
+        metrics={config.metrics}
+        popConfig={config.popConfig}
+        legendConfig={config.legendConfig}
+        onToggleSeries={toggleSeries}
+      />
     );
   };
 
@@ -362,35 +279,12 @@ const ChartVisualization = ({ table, schema, config, mockData, onConfigChange }:
       }
     };
 
-    const calculateDomain = (dataKeys: string[]): [number, number] | undefined => {
-      if (dataKeys.length === 0) return undefined;
-      
-      let min = Infinity;
-      let max = -Infinity;
-      
-      aggregatedData.forEach(row => {
-        dataKeys.forEach(key => {
-          const value = row[key];
-          if (value !== null && value !== undefined && !isNaN(value)) {
-            min = Math.min(min, value);
-            max = Math.max(max, value);
-          }
-        });
-      });
-      
-      if (min === Infinity || max === -Infinity) return undefined;
-      
-      // Add 10% padding to the domain
-      const padding = (max - min) * 0.1;
-      return [Math.floor(min - padding), Math.ceil(max + padding)];
-    };
-
     const leftKeys = getVisibleDataKeys('left');
     const rightKeys = getVisibleDataKeys('right');
 
     return {
-      left: calculateDomain(leftKeys),
-      right: calculateDomain(rightKeys)
+      left: calculateNiceDomain(leftKeys, aggregatedData),
+      right: calculateNiceDomain(rightKeys, aggregatedData)
     };
   }, [aggregatedData, config.chartType, config.metrics, config.popConfig, config.legendConfig.hiddenSeries]);
 
@@ -463,6 +357,39 @@ const ChartVisualization = ({ table, schema, config, mockData, onConfigChange }:
     );
   }
 
+  if (isLoading) {
+    return (
+      <Card className="flex h-[400px] items-center justify-center p-6">
+        <div className="text-center space-y-2">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-sm text-muted-foreground">Loading data...</p>
+        </div>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="p-6">
+        <Alert variant="destructive">
+          <AlertDescription>
+            <strong>Query Error:</strong> {error.message}
+          </AlertDescription>
+        </Alert>
+      </Card>
+    );
+  }
+
+  if (!aggregatedData || aggregatedData.length === 0) {
+    return (
+      <Card className="flex h-[400px] items-center justify-center p-6">
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">No data available for the selected configuration</p>
+        </div>
+      </Card>
+    );
+  }
+
   const handleRangeChange = (start: Date | undefined, end: Date | undefined) => {
     onConfigChange({
       ...config,
@@ -509,9 +436,16 @@ const ChartVisualization = ({ table, schema, config, mockData, onConfigChange }:
         <LineChart data={aggregatedData} margin={{ left: 20, right: 20, top: 5, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
           <XAxis 
-            dataKey={config.chartType === 'period-over-period' ? 'index' : 'time'}
+            dataKey={config.chartType === 'period-over-period' ? 'time' : 'time'}
             className="text-xs"
             tick={{ fill: 'hsl(var(--muted-foreground))' }}
+            tickFormatter={(value) => {
+              try {
+                return format(new Date(value), 'MMM d');
+              } catch {
+                return value;
+              }
+            }}
           />
           <YAxis 
             yAxisId="left"

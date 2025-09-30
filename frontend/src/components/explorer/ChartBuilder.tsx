@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Plus, BarChart3, List } from "lucide-react";
+import { Plus, BarChart3, List, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 
@@ -117,6 +117,11 @@ const ChartBuilder = ({ schema, config, onConfigChange }: ChartBuilderProps) => 
     onConfigChange({ ...config, metrics: newMetrics });
   };
 
+  const removeMetric = (index: number) => {
+    const newMetrics = config.metrics.filter((_, i) => i !== index);
+    onConfigChange({ ...config, metrics: newMetrics });
+  };
+
   const handleChartTypeChange = (chartType: ChartConfig['chartType']) => {
     onConfigChange({ ...config, chartType });
   };
@@ -217,6 +222,17 @@ const ChartBuilder = ({ schema, config, onConfigChange }: ChartBuilderProps) => 
               <div className="space-y-3">
                 {config.metrics.map((metric, index) => (
                   <div key={index} className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <span className="text-xs font-medium text-muted-foreground">Metric {index + 1}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeMetric(index)}
+                        className="h-6 w-6 p-0 hover:bg-destructive/20 hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
                     <div className="flex gap-2">
                       <Select
                         value={metric.aggregation}
