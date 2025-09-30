@@ -47,7 +47,8 @@ venv.bak/
 *.ipynb
 
 # Environment variables
-# .env is now tracked for convenience with Starter Warehouse
+# IMPORTANT: Never commit .env files - they may contain sensitive info
+.env
 .env.local
 .env.*.local
 

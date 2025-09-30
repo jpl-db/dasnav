@@ -41,11 +41,15 @@ databricks auth login --host https://your-workspace.cloud.databricks.com --profi
 
 #### 1. SQL Warehouse Configuration
 
-The app is pre-configured to use the **Serverless Starter Warehouse** in pm-bootcamp:
-- Warehouse ID: `9851b1483bb515e6`
-- Already set in `.env` and `app.yaml`
+Create a `.env` file from the example:
 
-No additional configuration needed! ✅
+```bash
+cp .env.example .env
+```
+
+The example is pre-configured with the **Serverless Starter Warehouse** ID for pm-bootcamp (`9851b1483bb515e6`).
+
+The `.env` file is gitignored to prevent accidental credential leaks. ✅
 
 #### 2. Install Python Dependencies
 

@@ -18,13 +18,17 @@ You should see `pm-bootcamp` in the list. If not, run:
 databricks auth login --host https://your-workspace.cloud.databricks.com --profile pm-bootcamp
 ```
 
-### Step 2: Verify SQL Warehouse (Already Configured!)
+### Step 2: Set Up Environment File
 
-The app is already configured to use the **Serverless Starter Warehouse**:
-- Warehouse ID: `9851b1483bb515e6`
-- Pre-configured in `.env` and `app.yaml`
+Create your `.env` file:
 
-No action needed! ✅
+```bash
+cp .env.example .env
+```
+
+The example includes the **Serverless Starter Warehouse** ID (`9851b1483bb515e6`) for pm-bootcamp.
+
+**Note**: `.env` is gitignored - your credentials stay local! ✅
 
 ### Step 3: Install Dependencies
 
