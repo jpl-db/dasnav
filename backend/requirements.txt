@@ -1,0 +1,17 @@
+# Databricks Apps Backend Requirements
+# Python 3.11+ required
+
+# Web framework
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# Data manipulation
+pandas>=2.0.0
+
+# Databricks integration
+databricks-sdk>=0.20.0
+databricks-sql-connector>=3.0.0
+
+# Utilities
+python-dateutil>=2.8.2
+python-dotenv>=1.0.0

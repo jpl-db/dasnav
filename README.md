@@ -1,17 +1,49 @@
-# SQL Query Interface
+# Databricks App - Hybrid Architecture
 
-A simple Databricks App for querying Unity Catalog tables directly.
+A Databricks App with **React Frontend + Python Backend** for querying Unity Catalog tables.
 
 **GitHub Repository**: https://github.com/jpl-db/dasnav  
 **Databricks App URL**: https://dasnav-3755057911985085.staging.aws.databricksapps.com
 
-## Overview
+## 🏗️ Architecture
 
-This app provides a minimal SQL query interface for:
-- Querying Unity Catalog tables
-- Executing custom SQL queries
-- Viewing results in an interactive table
-- Downloading query results as CSV
+- **Frontend**: React app (Lovable.dev export goes here)
+- **Backend**: Python Flask API for Databricks SQL queries
+- **Database**: Unity Catalog via SQL Warehouse
+
+## 📁 Project Structure
+
+```
+dasnav/
+├── frontend/          # YOUR LOVABLE EXPORT GOES HERE
+│   └── README.md      # Integration instructions
+├── backend/           # Python API (ready to use)
+│   ├── api.py        # Flask REST API
+│   ├── db.py         # Databricks queries
+│   └── tests...
+├── app.yaml          # Databricks deployment config
+└── run_local.sh      # Start both services
+```
+
+## 🚀 Quick Start
+
+### Current Status:
+✅ **Backend API is ready and tested**  
+⏳ **Waiting for your Lovable frontend**
+
+### To Add Your Lovable UI:
+1. Export your Lovable project
+2. Drop files into `frontend/` directory
+3. See `frontend/README.md` and `HYBRID_SETUP.md` for integration
+
+### Run Locally:
+```bash
+# Backend only (current)
+cd backend && python api.py
+
+# Full stack (after adding frontend)
+./run_local.sh
+```
 
 ## Prerequisites
 

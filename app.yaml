@@ -1,13 +1,20 @@
-# Databricks App Configuration for logfood-central
+# Databricks App Configuration - Hybrid Architecture
+# React Frontend + Python Backend
 # See: https://docs.databricks.com/dev-tools/databricks-apps/
 
-# Command to start the app
-command: ["streamlit", "run", "app.py", "--server.port", "8000", "--server.enableCORS", "false"]
+# Command to start both frontend and backend
+# Note: Update this once you've added your Lovable frontend
+command: ["sh", "-c", "cd backend && python api.py"]
+
+# For hybrid with React frontend, uncomment this instead:
+# command: ["sh", "-c", "cd backend && python api.py & cd frontend && npm start"]
 
 # Environment variables
 env:
-  - name: STREAMLIT_SERVER_HEADLESS
-    value: "true"
+  - name: DATABRICKS_PROFILE
+    value: "pm-bootcamp"
+  - name: API_PORT
+    value: "8001"
 
 # Compute resources
 # Using Serverless Starter Warehouse for pm-bootcamp
@@ -16,5 +23,5 @@ resources:
 
 # When deployed, the app will use:
 # - The Serverless Starter Warehouse for queries
-# - App service principal authentication (not user credentials)
-# - Serverless compute for running the Streamlit app
+# - App service principal authentication (managed by Databricks)
+# - Frontend on port 8000, Backend API on port 8001
