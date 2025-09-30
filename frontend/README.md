@@ -1,24 +1,54 @@
 # Frontend - Lovable Integration
 
-## 📦 Drop Your Lovable Export Here
+## 🎯 Recommended Setup: Separate Repositories
 
-This directory is where your Lovable.dev React app should go.
+**Keep your Lovable project in its own repo** to avoid conflicts:
 
-### Steps to Integrate:
+```
+lovable-dasnav-ui/     ← Lovable manages this repo
+└── Your Lovable UI
 
-1. **Export from Lovable:**
-   - Go to your Lovable project
-   - Export/download your project files
-   
-2. **Place Files Here:**
-   ```
-   frontend/
-   ├── package.json       # From your Lovable export
-   ├── src/               # Your React components
-   ├── public/            # Static assets
-   ├── index.html         # Main HTML file
-   └── ...                # Other Lovable files
-   ```
+dasnav/frontend/       ← Copy here when ready to integrate
+└── Lovable UI + API integration
+```
+
+### Why Separate Repos?
+- ✅ Lovable can auto-commit without conflicts
+- ✅ Cursor/you edit backend without touching Lovable
+- ✅ Clean separation of concerns
+- ✅ Copy to dasnav only when UI is ready
+
+## 📋 Integration Steps
+
+### Step 1: Let Lovable Create Its Repo
+1. In Lovable: Settings → GitHub
+2. Create new repo (e.g., `lovable-dasnav-ui`)
+3. Let Lovable manage that repo
+
+### Step 2: When Ready, Copy to dasnav
+
+```bash
+# Clone your Lovable repo
+cd ~/code
+git clone https://github.com/YOUR-USERNAME/lovable-dasnav-ui.git
+
+# Copy to this directory
+cd ~/code/dasnav/frontend
+cp -r ~/code/lovable-dasnav-ui/* .
+```
+
+### Step 3: Add API Integration
+
+Place files here:
+```
+frontend/
+├── package.json       # From Lovable (add proxy config)
+├── src/               # Your React components
+│   └── utils/
+│       └── api.js    # Add this for backend calls
+├── public/            # Static assets
+└── ...                # Other Lovable files
+```
 
 3. **Update API Calls:**
    Your Lovable components will call the backend API at `/api/*` endpoints:

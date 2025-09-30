@@ -69,20 +69,38 @@ API is running at: **http://localhost:8001**
 
 ### 2. Add Your Lovable Frontend
 
-**When you're ready**, export your Lovable project and place the files in `frontend/`:
+**Recommended**: Keep Lovable in a **separate repository** to avoid conflicts.
 
+#### Setup Lovable Repo:
 ```bash
-# Your Lovable export should go here:
-frontend/
-├── package.json       # From Lovable
-├── src/
-│   ├── App.jsx       # Your main component
-│   ├── components/   # Your UI components
-│   └── utils/
-│       └── api.js    # Add API utilities (see INTEGRATION_EXAMPLE.md)
-├── public/
-└── index.html
+# In Lovable: Settings → GitHub → Create new repo
+# Name it: lovable-dasnav-ui (or similar)
+# Let Lovable manage that repo
 ```
+
+#### Copy to dasnav when ready:
+```bash
+# Clone your Lovable repo
+cd ~/code
+git clone https://github.com/YOUR-USERNAME/lovable-dasnav-ui.git
+
+# Copy to dasnav/frontend
+cd ~/code/dasnav/frontend
+cp -r ~/code/lovable-dasnav-ui/* .
+
+# Add API integration code
+# (see INTEGRATION_EXAMPLE.md)
+
+# Commit to dasnav
+cd ~/code/dasnav
+git add frontend/
+git commit -m "Integrate Lovable UI"
+```
+
+**Why separate repos?**
+- Lovable auto-commits won't conflict with your dasnav edits
+- Clean separation: Lovable owns UI source, dasnav is deployment repo
+- Copy to dasnav only when UI is ready to integrate
 
 ### 3. Run Both Services
 
