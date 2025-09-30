@@ -6,8 +6,12 @@ A simple SQL query interface for Unity Catalog tables
 import streamlit as st
 import pandas as pd
 import os
+from dotenv import load_dotenv
 from databricks import sql
 from databricks.sdk import WorkspaceClient
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configuration
 DATABRICKS_PROFILE = os.getenv("DATABRICKS_PROFILE", "pm-bootcamp")
@@ -31,19 +35,30 @@ st.markdown("Query Unity Catalog tables directly from your Databricks workspace"
 def get_databricks_connection():
     """Get Databricks SQL connection using CLI profile credentials"""
     try:
-        # Initialize WorkspaceClient with profile (uses ~/.databrickscfg)
-        w = WorkspaceClient(profile=DATABRICKS_PROFILE)
-        
         # Get warehouse ID from environment or show error
         warehouse_id = SQL_WAREHOUSE_ID
         if not warehouse_id:
             return None, "Please set DATABRICKS_SQL_WAREHOUSE_ID environment variable"
         
-        # Create SQL connection using profile credentials
+        # Initialize config with profile (uses ~/.databrickscfg)
+        from databricks.sdk.core import Config
+        cfg = Config(profile=DATABRICKS_PROFILE)
+        
+        # Get the OAuth token from the config
+        # cfg.authenticate() returns {'Authorization': 'Bearer <token>'}
+        auth_dict = cfg.authenticate()
+        
+        # Extract the Bearer token from the Authorization header
+        token = auth_dict.get('Authorization', '').replace('Bearer ', '')
+        
+        if not token:
+            return None, "Could not get authentication token from profile"
+        
+        # Create SQL connection using the access token
         connection = sql.connect(
-            server_hostname=w.config.host.replace("https://", ""),
+            server_hostname=cfg.host.replace("https://", ""),
             http_path=f"/sql/1.0/warehouses/{warehouse_id}",
-            credentials_provider=w.config.authenticate
+            access_token=token
         )
         
         return connection, None
