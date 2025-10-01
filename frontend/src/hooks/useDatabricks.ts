@@ -12,8 +12,7 @@ import { generateDefaultTaxiDataset, TAXI_SCHEMA } from '@/lib/mockNycTaxiData';
 import { processPeriodOverPeriod } from '@/lib/periodOverPeriod';
 
 // Check if we're in mock mode (backend not available)
-// Set to false to use the real Databricks backend
-const MOCK_MODE = false;
+const MOCK_MODE = import.meta.env.DEV;
 
 /**
  * Process mock data to match SQL query structure

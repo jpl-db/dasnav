@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    // No proxy needed - frontend calls deployed Databricks app directly
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {

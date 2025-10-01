@@ -5,6 +5,7 @@ import ChartBuilder from "@/components/explorer/ChartBuilder";
 import ChartVisualization from "@/components/explorer/ChartVisualization";
 import SqlViewer from "@/components/explorer/SqlViewer";
 import DataConfig from "@/components/explorer/DataConfig";
+import TopNVisualization from "@/components/explorer/TopNVisualization";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDatabricksSchema } from "@/hooks/useDatabricks";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +14,7 @@ interface SchemaColumn {
   name: string;
   type: string;
   role: 'time' | 'metric' | 'dimension' | 'unassigned';
+  includeInTopN?: boolean;
 }
 
 const inferColumnRole = (name: string, type: string): SchemaColumn['role'] => {
@@ -84,6 +86,12 @@ const Index = () => {
     setSchema([]);
     refetchSchema();
   };
+  const [topNFilters, setTopNFilters] = useState<{
+    column: string;
+    operator: string;
+    value: string;
+  }[]>([]);
+
   const [chartConfig, setChartConfig] = useState({
     chartType: 'default' as 'default' | 'period-over-period',
     grain: 'day' as 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year',
@@ -189,6 +197,14 @@ const Index = () => {
               schema={schema} 
               config={chartConfig} 
               onConfigChange={setChartConfig} 
+            />
+            <TopNVisualization
+              table={tableName}
+              schema={schema}
+              metrics={chartConfig.metrics}
+              dateRange={chartConfig.dateRange}
+              onFilterChange={setTopNFilters}
+              activeFilters={topNFilters}
             />
             <SqlViewer table={tableName} schema={schema} config={chartConfig} />
           </div>

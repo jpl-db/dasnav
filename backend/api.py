@@ -14,11 +14,11 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Enable CORS for local development and Databricks Apps
-# In production, Databricks handles routing between frontend and backend
+# Enable CORS for Lovable dev environment and Databricks Apps
+# Allows calls from Lovable.app, localhost, and deployed frontend
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["http://localhost:3000", "http://localhost:8000", "http://localhost:8080", "*"],
+        "origins": "*",  # Allow all origins for development
         "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type"]
     }
