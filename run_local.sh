@@ -48,16 +48,18 @@ if [ -f "frontend/package.json" ]; then
         npm install
     fi
     
-    # Start frontend
-    npm start &
+    # Start frontend with real backend (no mock data)
+    VITE_USE_MOCK=false npm run dev &
     FRONTEND_PID=$!
     cd ..
     
     echo "✅ Frontend started (PID: $FRONTEND_PID)"
     echo ""
     echo "🌐 App running at:"
-    echo "   Frontend: http://localhost:3000"
+    echo "   Frontend: http://localhost:8080"
     echo "   Backend API: http://localhost:8001"
+    echo ""
+    echo "📊 Mode: Real Unity Catalog data (mock mode disabled)"
 else
     echo "ℹ️  No frontend found yet."
     echo "   Drop your Lovable export into the 'frontend/' directory"

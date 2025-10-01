@@ -11,9 +11,11 @@ import {
 import { generateDefaultTaxiDataset, TAXI_SCHEMA } from '@/lib/mockNycTaxiData';
 import { processPeriodOverPeriod } from '@/lib/periodOverPeriod';
 
-// Check if we're in mock mode (backend not available)
-// Set to false to use the real Databricks backend
-const MOCK_MODE = false;
+// Mock mode configuration
+// - In Lovable: Use mock data for fast UI iteration
+// - Locally with backend: Set VITE_USE_MOCK=false or just start the backend
+// - Auto-detect: If VITE_USE_MOCK is not set, default to true (mock mode)
+const MOCK_MODE = import.meta.env.VITE_USE_MOCK !== 'false';
 
 /**
  * Process mock data to match SQL query structure
