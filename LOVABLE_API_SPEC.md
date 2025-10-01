@@ -1,12 +1,23 @@
 # Backend API Specification for Lovable
 
+**Backend API Base URL**: `https://dasnav-3755057911985085.staging.aws.databricksapps.com/api`
+
 **Copy this prompt into Lovable when working on the UI:**
 
 ---
 
 ## 🔌 Backend API Endpoints
 
-My app has a Python Flask backend running at `/api` with these endpoints:
+The backend is **already deployed** at Databricks. All API calls should go to:
+
+```
+https://dasnav-3755057911985085.staging.aws.databricksapps.com/api
+```
+
+**Available endpoints:**
+
+**✨ The backend is live and ready!** You can test it now:
+- Health: https://dasnav-3755057911985085.staging.aws.databricksapps.com/api/health
 
 ### 1. Health Check
 ```typescript
@@ -40,14 +51,20 @@ Error: { status: "error", message: string }
 
 ## 📋 Integration Requirements
 
-Please create a TypeScript API client in `src/lib/databricksApi.ts` with these functions:
+**The API client is already set up!** Located at `src/lib/databricksApi.ts`:
 
 ```typescript
+// API Base is pre-configured to deployed backend
+const API_BASE = 'https://dasnav-3755057911985085.staging.aws.databricksapps.com/api';
+
+// Available functions:
 export const runQuery = async (query: string): Promise<any[]>
 export const getTableSchema = async (tableName: string): Promise<SchemaColumn[]>
 export const testBackendConnection = async (): Promise<{ status: string; message?: string }>
 export const getBackendHealth = async (): Promise<{ status: string; service: string; profile: string }>
 ```
+
+**Just import and use them!** No setup needed.
 
 And React hooks in `src/hooks/useDatabricks.ts`:
 
