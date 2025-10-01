@@ -5,6 +5,12 @@ echo "🎨 Lovable UI Import Script"
 echo "=============================="
 echo ""
 
+# Stop any running servers first
+echo "🛑 Stopping running servers..."
+pkill -f 'python api.py' 2>/dev/null && echo "   ✓ Stopped backend" || echo "   ℹ No backend running"
+pkill -f 'vite' 2>/dev/null && echo "   ✓ Stopped frontend" || echo "   ℹ No frontend running"
+echo ""
+
 # Check if Lovable repo path is provided
 if [ -z "$1" ]; then
     echo "Usage: ./import_lovable.sh <path-to-lovable-repo>"
@@ -90,22 +96,28 @@ if [ -f "frontend/package.json" ]; then
     echo ""
     echo "✅ Import successful!"
     echo ""
-    echo "📝 Next steps:"
+    
+    # Ask if user wants to restart servers
+    read -p "🚀 Start local servers now? (Y/n): " restart
     echo ""
-    echo "1. Add API proxy to frontend/package.json:"
-    echo '   "proxy": "http://localhost:8001"'
-    echo ""
-    echo "2. Create frontend/src/utils/api.js:"
-    echo "   See frontend/INTEGRATION_EXAMPLE.md for code"
-    echo ""
-    echo "3. Update your components to use the API"
-    echo ""
-    echo "4. Test locally:"
-    echo "   ./run_local.sh"
-    echo ""
-    echo "5. Commit when ready:"
+    
+    if [[ ! $restart =~ ^[Nn]$ ]]; then
+        echo "🔄 Installing dependencies and starting servers..."
+        echo ""
+        ./run_local.sh
+    else
+        echo "📝 To start servers later, run:"
+        echo "   ./run_local.sh"
+        echo ""
+        echo "📌 Or manually:"
+        echo "   cd frontend && npm install && VITE_USE_MOCK=false npm run dev"
+        echo "   cd backend && source ../venv/bin/activate && python api.py"
+        echo ""
+    fi
+    
+    echo "💡 When ready to commit:"
     echo "   git add frontend/"
-    echo "   git commit -m 'Integrate Lovable UI'"
+    echo "   git commit -m 'Update UI from Lovable'"
     echo ""
 else
     echo "❌ Import may have failed - no package.json found in frontend/"

@@ -5,6 +5,13 @@ echo "🚀 Starting Databricks App (Hybrid Mode)"
 echo "=========================================="
 echo ""
 
+# Stop any existing servers
+echo "🛑 Stopping any existing servers..."
+pkill -f 'python api.py' 2>/dev/null && echo "   ✓ Stopped old backend" || true
+pkill -f 'vite' 2>/dev/null && echo "   ✓ Stopped old frontend" || true
+sleep 1
+echo ""
+
 # Check if .env exists
 if [ ! -f ".env" ]; then
     echo "⚠️  .env file not found. Creating from .env.example..."
