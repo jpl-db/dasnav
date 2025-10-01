@@ -13,13 +13,16 @@ import pandas as pd
 load_dotenv()
 
 # Configuration
-DATABRICKS_PROFILE = os.getenv("DATABRICKS_PROFILE", "pm-bootcamp")
+# Profile is only used for local dev - deployed apps use service principal auth
+DATABRICKS_PROFILE = os.getenv("DATABRICKS_PROFILE", "")  # Empty string means use default auth
 SQL_WAREHOUSE_ID = os.getenv("DATABRICKS_SQL_WAREHOUSE_ID", "")
 
 
 def get_databricks_connection():
     """
-    Get Databricks SQL connection using CLI profile credentials
+    Get Databricks SQL connection
+    
+    Uses profile-based auth for local dev, service principal for deployed apps.
     
     Returns:
         tuple: (connection, error_message)
@@ -32,8 +35,13 @@ def get_databricks_connection():
         if not warehouse_id:
             return None, "Please set DATABRICKS_SQL_WAREHOUSE_ID environment variable"
         
-        # Initialize config with profile (uses ~/.databrickscfg)
-        cfg = Config(profile=DATABRICKS_PROFILE)
+        # Initialize config - will use profile for local dev, service principal when deployed
+        if DATABRICKS_PROFILE:
+            # Local development: use profile from .env
+            cfg = Config(profile=DATABRICKS_PROFILE)
+        else:
+            # Deployed in Databricks Apps: use default auth (service principal)
+            cfg = Config()
         
         # Get the OAuth token from the config
         # cfg.authenticate() returns {'Authorization': 'Bearer <token>'}
@@ -43,7 +51,7 @@ def get_databricks_connection():
         token = auth_dict.get('Authorization', '').replace('Bearer ', '')
         
         if not token:
-            return None, "Could not get authentication token from profile"
+            return None, "Could not get authentication token"
         
         # Create SQL connection using the access token
         connection = sql.connect(
@@ -54,7 +62,8 @@ def get_databricks_connection():
         
         return connection, None
     except Exception as e:
-        return None, f"Connection failed: {str(e)}. Ensure 'databricks auth login' is configured for profile '{DATABRICKS_PROFILE}'"
+        env_hint = f"for profile '{DATABRICKS_PROFILE}'" if DATABRICKS_PROFILE else "(using default auth)"
+        return None, f"Connection failed: {str(e)}. {env_hint}"
 
 
 def execute_query(query, return_dict=False):

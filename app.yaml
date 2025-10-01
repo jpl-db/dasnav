@@ -22,10 +22,12 @@ command:
 
 # Environment variables
 env:
-  - name: DATABRICKS_PROFILE
-    value: "pm-bootcamp"
   - name: API_PORT
     value: "8001"
+  - name: DATABRICKS_SQL_WAREHOUSE_ID
+    value: "9851b1483bb515e6"
+  # Note: DATABRICKS_PROFILE is NOT set here - Databricks Apps use service principal auth
+  # Local dev uses pm-bootcamp profile from .env file
 
 # Compute resources
 # Using Serverless Starter Warehouse for pm-bootcamp
